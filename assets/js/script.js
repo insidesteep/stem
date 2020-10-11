@@ -1,279 +1,300 @@
-window.addEventListener("load",function() {
+window.addEventListener("load", function() {
 
-	let container = document.getElementsByClassName('first')[0];
-  const step = 10;
-  const side = 9;
+    let container = document.getElementsByClassName('first')[0];
+    const step = 10;
+    const side = 9;
 
-  let colors = [];
+    let colors = [];
 
-  let canv, ctx;   // canvas and context
-  let maxx, maxy;  // canvas sizes (in pixels)
+    let canv, ctx; // canvas and context
+    let maxx, maxy; // canvas sizes (in pixels)
 
-  let grid;  // arrays of cells
-  let xDisp,yDisp;  // pre-computed positions of cells on display
+    let grid; // arrays of cells
+    let xDisp, yDisp; // pre-computed positions of cells on display
 
-  let nbx, nby;     // grid size (in elements, not pixels)
+    let nbx, nby; // grid size (in elements, not pixels)
 
-// for animation
-  let queue, animState;
+    // for animation
+    let queue, animState;
 
-  const gliders = [[[0,1,0],[0,0,1],[1,1,1]],   // 1st position
-                  [[0,1,1],[1,0,1],[0,0,1]],
-                  [[1,1,1],[1,0,0],[0,1,0]],
-                  [[1,0,0],[1,0,1],[1,1,0]]];  // 4th position
+    const gliders = [
+        [
+            [0, 1, 0],
+            [0, 0, 1],
+            [1, 1, 1]
+        ], // 1st position
+        [
+            [0, 1, 1],
+            [1, 0, 1],
+            [0, 0, 1]
+        ],
+        [
+            [1, 1, 1],
+            [1, 0, 0],
+            [0, 1, 0]
+        ],
+        [
+            [1, 0, 0],
+            [1, 0, 1],
+            [1, 1, 0]
+        ]
+    ]; // 4th position
 
 
-// shortcuts for Math.…
+    // shortcuts for Math.…
 
-  const mrandom = Math.random;
-  const mfloor = Math.floor;
-  const mround = Math.round;
-  const mceil = Math.ceil;
-  const mabs = Math.abs;
-  const mmin = Math.min;
-  const mmax = Math.max;
+    const mrandom = Math.random;
+    const mfloor = Math.floor;
+    const mround = Math.round;
+    const mceil = Math.ceil;
+    const mabs = Math.abs;
+    const mmin = Math.min;
+    const mmax = Math.max;
 
-  const mPI = Math.PI;
-  const mPIS2 = Math.PI / 2;
-  const m2PI = Math.PI * 2;
-  const msin = Math.sin;
-  const mcos = Math.cos;
-  const matan2 = Math.atan2;
+    const mPI = Math.PI;
+    const mPIS2 = Math.PI / 2;
+    const m2PI = Math.PI * 2;
+    const msin = Math.sin;
+    const mcos = Math.cos;
+    const matan2 = Math.atan2;
 
-  const mhypot = Math.hypot;
-  const msqrt = Math.sqrt;
+    const mhypot = Math.hypot;
+    const msqrt = Math.sqrt;
 
-  const rac3   = msqrt(3);
-  const rac3s2 = rac3 / 2;
-  const mPIS3 = Math.PI / 3;
+    const rac3 = msqrt(3);
+    const rac3s2 = rac3 / 2;
+    const mPIS3 = Math.PI / 3;
 
-//-----------------------------------------------------------------------------
-// miscellaneous functions
-//-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
+    // miscellaneous functions
+    //-----------------------------------------------------------------------------
 
-  function alea (min, max) {
-// random number [min..max[ . If no max is provided, [0..min[
+    function alea(min, max) {
+        // random number [min..max[ . If no max is provided, [0..min[
 
-    if (typeof max == 'undefined') return min * mrandom();
-    return min + (max - min) * mrandom();
-  }
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-  function intAlea (min, max) {
-// random integer number [min..max[ . If no max is provided, [0..min[
-
-    if (typeof max == 'undefined') {
-      max = min; min = 0;
+        if (typeof max == 'undefined') return min * mrandom();
+        return min + (max - min) * mrandom();
     }
-    return mfloor(min + (max - min) * mrandom());
-  } // intAlea
 
-//-----------------------------------------------------------------------------
-function drawCell (kx, ky, state) {
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-  ctx.fillStyle = colors[state];
-  ctx.fillRect(xDisp[kx], yDisp[ky], side, side);
-}
+    function intAlea(min, max) {
+        // random integer number [min..max[ . If no max is provided, [0..min[
 
-//-----------------------------------------------------------------------------
+        if (typeof max == 'undefined') {
+            max = min;
+            min = 0;
+        }
+        return mfloor(min + (max - min) * mrandom());
+    } // intAlea
 
-function invertedRow(row) {
-  let nrow = [];
-  let k, k1, len;
-  for (k = 0, k1 = row.length - 1; k1 >= 0; ++k, --k1) {
-    nrow[k] = row[k1];
-  }
-  return nrow;
-}
+    //-----------------------------------------------------------------------------
+    function drawCell(kx, ky, state) {
 
-//-----------------------------------------------------------------------------
-/* one generation */
-
-function generation() {
-
-  let kx, ky, l0, l1, l2, h0, h2, newRow;
-  let nbn; // number of neighbours
-  let fstate; // future state
-
-  let fgrid = [];
-
-  for (let ky = 0; ky < nby; ++ky) {
-    newRow = fgrid[ky] = new Array(nbx);
-    newRow.fill(0);
-    if (ky == 0) {
-      l0 = invertedRow(grid[nby - 1]);
-    } else l0 = grid[ky - 1];
-    l1 = grid[ky];
-    if (ky == nby - 1) {
-      l2 = invertedRow(grid[0]);
-    } else l2 = grid[ky + 1];
-
-    for (let kx = 0; kx < nbx; ++kx) {
-      h0 = (kx == 0) ? (nbx - 1) : kx - 1;
-      h2 = (kx == nbx - 1) ? 0 : kx + 1;
-      nbn = l0[h0] + l0[kx] + l0[h2] +
-            l1[h0] +          l1[h2] +
-            l2[h0] + l2[kx] + l2[h2];
-      newRow[kx] = fstate = [[0,0,0,1,0,0,0,0,0],
-                             [0,0,1,1,0,0,0,0,0]][l1[kx]][nbn];
-      if (fstate != l1[kx]) drawCell(kx, ky, fstate);
+        ctx.fillStyle = colors[state];
+        ctx.fillRect(xDisp[kx], yDisp[ky], side, side);
     }
-  } // for ky
 
-  grid = fgrid;
-}
+    //-----------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
-function putCell (kx, ky) {
-  grid[ky][kx] = 1;
-  drawCell(kx, ky, 1);
-}
-
-//-----------------------------------------------------------------------------
-function putFigure (kx, ky, figure) {
-
-/* Not designed for putting figures on the borders of the grid
-   Does nor erase previous cells
-*/
-
-  let ny = figure.length;
-  let nx = figure[0].length;
-  let lineg, linef;
-
-  for (let y = 0; y < ny; ++y) {
-    linef = figure[y];
-    for (let x = 0; x < nx; ++x) {
-      if (linef[x]) putCell(x + kx, y + ky);
+    function invertedRow(row) {
+        let nrow = [];
+        let k, k1, len;
+        for (k = 0, k1 = row.length - 1; k1 >= 0; ++k, --k1) {
+            nrow[k] = row[k1];
+        }
+        return nrow;
     }
-  }
-}
 
-//-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
+    /* one generation */
 
-function createGrid() {
+    function generation() {
 
-  grid = [];
-  for (let ky = 0; ky < nby; ++ky) {
-    grid [ky] = new Array(nbx);
-    grid [ky].fill(0);
-  } // for ky
-} // createGrid
+        let kx, ky, l0, l1, l2, h0, h2, newRow;
+        let nbn; // number of neighbours
+        let fstate; // future state
 
-//-----------------------------------------------------------------------------
-// returns false if nothing can be done, true if drawing done
+        let fgrid = [];
 
-function startOver() {
+        for (let ky = 0; ky < nby; ++ky) {
+            newRow = fgrid[ky] = new Array(nbx);
+            newRow.fill(0);
+            if (ky == 0) {
+                l0 = invertedRow(grid[nby - 1]);
+            } else l0 = grid[ky - 1];
+            l1 = grid[ky];
+            if (ky == nby - 1) {
+                l2 = invertedRow(grid[0]);
+            } else l2 = grid[ky + 1];
 
-  let hue, offs;
+            for (let kx = 0; kx < nbx; ++kx) {
+                h0 = (kx == 0) ? (nbx - 1) : kx - 1;
+                h2 = (kx == nbx - 1) ? 0 : kx + 1;
+                nbn = l0[h0] + l0[kx] + l0[h2] +
+                    l1[h0] + l1[h2] +
+                    l2[h0] + l2[kx] + l2[h2];
+                newRow[kx] = fstate = [
+                    [0, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 1, 0, 0, 0, 0, 0]
+                ][l1[kx]][nbn];
+                if (fstate != l1[kx]) drawCell(kx, ky, fstate);
+            }
+        } // for ky
 
-// canvas dimensions
+        grid = fgrid;
+    }
 
-  maxx = container.offsetWidth;
-  maxy = container.offsetHeight;
+    //-----------------------------------------------------------------------------
+    function putCell(kx, ky) {
+        grid[ky][kx] = 1;
+        drawCell(kx, ky, 1);
+    }
 
-  canv.style.left = ((container.offsetWidth ) - maxx) / 2 + 'px';
-  canv.style.top = ((container.offsetHeight ) - maxy) / 2 + 'px';
+    //-----------------------------------------------------------------------------
+    function putFigure(kx, ky, figure) {
 
-  ctx.canvas.width = maxx;
-  ctx.canvas.height = maxy;
-//  ctx.lineCap = 'round';   // placed here because reset when canvas resized
-  ctx.imageSmoothingEnabled = false;
+        /* Not designed for putting figures on the borders of the grid
+           Does nor erase previous cells
+        */
 
-  nbx = mceil(maxx / step);
-  nby = mceil(maxy / step);
+        let ny = figure.length;
+        let nx = figure[0].length;
+        let lineg, linef;
 
-  if (nbx < 10 || nby < 10) return false; // not interesting
-  queue = [];
-  hue = intAlea(0,360);
-  colors = [`hsl(218, 100%, 88%)`, `hsl(${hue},100%,50%)`,`hsl(${hue},100%,80%)`]
+        for (let y = 0; y < ny; ++y) {
+            linef = figure[y];
+            for (let x = 0; x < nx; ++x) {
+                if (linef[x]) putCell(x + kx, y + ky);
+            }
+        }
+    }
 
-  createGrid();
+    //-----------------------------------------------------------------------------
 
-// calculate positions of columns / rows
-  xDisp = [];
-  offs = (maxx - nbx * step) / 2 ;
-  for (let kx = 0; kx < nbx; ++kx) xDisp[kx] = offs + kx * step;
+    function createGrid() {
 
-  yDisp = [];
-  offs = (maxy - nby * step) / 2 ;
-  for (let ky = 0; ky < nby; ++ky) yDisp[ky] = offs + ky * step;
+        grid = [];
+        for (let ky = 0; ky < nby; ++ky) {
+            grid[ky] = new Array(nbx);
+            grid[ky].fill(0);
+        } // for ky
+    } // createGrid
 
-// initial population
-  putFigure (mfloor(nbx / 2) , mfloor(nby / 2), gliders[intAlea(4)]);
+    //-----------------------------------------------------------------------------
+    // returns false if nothing can be done, true if drawing done
 
-  return true; // ok
+    function startOver() {
 
-} // startOver
+        let hue, offs;
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        // canvas dimensions
 
-function clickCanvas(event) {
-	if ($(event.target).parents(".first").length == 1) {
-		let target = event.target.closest('.first');
-    let targetCoords = target.getBoundingClientRect();
-    let ax = mfloor((event.clientX - targetCoords.left) / step);
-    let ay = mfloor((event.clientY - targetCoords.top) / step);
-    if (animState == 0) return; //  no animation, no click
-    ax -= 1;
-    ay -= 1;
-    if (ax < 0) ax = 0;
-    if (ay < 0) ay = 0;
-    if (ax + 2 > nbx - 1) ax = nbx - 3;
-    if (ay + 2 > nby - 1) ay = nby - 3;
-    putFigure (ax,ay, gliders[intAlea(4)]);
-  } //  clickCanvas
-}
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        maxx = container.offsetWidth;
+        maxy = container.offsetHeight;
 
-function resize(event) {
-  animState = 0;
-}
+        canv.style.left = ((container.offsetWidth) - maxx) / 2 + 'px';
+        canv.style.top = ((container.offsetHeight) - maxy) / 2 + 'px';
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        ctx.canvas.width = maxx;
+        ctx.canvas.height = maxy;
+        //  ctx.lineCap = 'round';   // placed here because reset when canvas resized
+        ctx.imageSmoothingEnabled = false;
 
-function animate(tStamp) {
+        nbx = mceil(maxx / step);
+        nby = mceil(maxy / step);
 
-  let click;
-  switch(animState) {
-    case 0 :
-      if (startOver()) ++animState;
-      break;
-    case 1 :
-      generation();
-  } // switch
-  window.requestAnimationFrame(animate);
+        if (nbx < 10 || nby < 10) return false; // not interesting
+        queue = [];
+        hue = intAlea(0, 360);
+        colors = [`hsl(218, 100%, 88%)`, `hsl(${hue},100%,50%)`, `hsl(${hue},100%,80%)`]
 
-} // animate
-//------------------------------------------------------------------------
-//------------------------------------------------------------------------
-// beginning of execution
+        createGrid();
 
-  {
-  	let 
-  	// canvBox = document.createElement('div');
-   //  canvBox.className = "canvBox";
-   //  canv = document.createElement('canvas');
-   //  canvBox.append(canv);
-   canvBox = document.querySelector('.canvBox')
-   canv = document.querySelector('.myCanvas')
-   // canv.width('1285px')
-    ctx = canv.getContext('2d');
-    
-    container.prepend(canvBox);
-   
-  } // canvas creation
+        // calculate positions of columns / rows
+        xDisp = [];
+        offs = (maxx - nbx * step) / 2;
+        for (let kx = 0; kx < nbx; ++kx) xDisp[kx] = offs + kx * step;
 
-  window.addEventListener('click', clickCanvas);
-  window.addEventListener('resize', resize);
-  animState = 0; // to startOver
-  animate();
-  canv.setAttribute('title','click to launch glider');
+        yDisp = [];
+        offs = (maxy - nby * step) / 2;
+        for (let ky = 0; ky < nby; ++ky) yDisp[ky] = offs + ky * step;
+
+        // initial population
+        putFigure(mfloor(nbx / 2), mfloor(nby / 2), gliders[intAlea(4)]);
+
+        return true; // ok
+
+    } // startOver
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    function clickCanvas(event) {
+        if ($(event.target).parents(".first").length == 1) {
+            let target = event.target.closest('.first');
+            let targetCoords = target.getBoundingClientRect();
+            let ax = mfloor((event.clientX - targetCoords.left) / step);
+            let ay = mfloor((event.clientY - targetCoords.top) / step);
+            if (animState == 0) return; //  no animation, no click
+            ax -= 1;
+            ay -= 1;
+            if (ax < 0) ax = 0;
+            if (ay < 0) ay = 0;
+            if (ax + 2 > nbx - 1) ax = nbx - 3;
+            if (ay + 2 > nby - 1) ay = nby - 3;
+            putFigure(ax, ay, gliders[intAlea(4)]);
+        } //  clickCanvas
+    }
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    function resize(event) {
+        animState = 0;
+    }
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    function animate(tStamp) {
+
+        let click;
+        switch (animState) {
+            case 0:
+                if (startOver()) ++animState;
+                break;
+            case 1:
+                generation();
+        } // switch
+        window.requestAnimationFrame(animate);
+
+    } // animate
+    //------------------------------------------------------------------------
+    //------------------------------------------------------------------------
+    // beginning of execution
+
+    {
+        let
+        // canvBox = document.createElement('div');
+        //  canvBox.className = "canvBox";
+        //  canv = document.createElement('canvas');
+        //  canvBox.append(canv);
+            canvBox = document.querySelector('.canvBox')
+        canv = document.querySelector('.myCanvas')
+            // canv.width('1285px')
+        ctx = canv.getContext('2d');
+
+        container.prepend(canvBox);
+
+    } // canvas creation
+
+    window.addEventListener('click', clickCanvas);
+    window.addEventListener('resize', resize);
+    animState = 0; // to startOver
+    animate();
+    canv.setAttribute('title', 'click to launch glider');
 }); // window load listener
 
 
 ////////////************MASK_phone****************////////////////////////
-(function (factory, jQuery, Zepto) {
+(function(factory, jQuery, Zepto) {
 
     if (typeof define === 'function' && define.amd) {
         define(['jquery'], factory);
@@ -283,13 +304,13 @@ function animate(tStamp) {
         factory(jQuery || Zepto);
     }
 
-}(function ($) {
+}(function($) {
 
-    var Mask = function (el, mask, options) {
+    var Mask = function(el, mask, options) {
 
         var p = {
             invalid: [],
-            getCaret: function () {
+            getCaret: function() {
                 try {
                     var sel,
                         pos = 0,
@@ -331,45 +352,46 @@ function animate(tStamp) {
             },
             events: function() {
                 el
-                .on('keydown.mask', function(e) {
-                    el.data('mask-keycode', e.keyCode || e.which);
-                    el.data('mask-previus-value', el.val());
-                })
-                .on($.jMaskGlobals.useInput ? 'input.mask' : 'keyup.mask', p.behaviour)
-                .on('paste.mask drop.mask', function() {
-                    setTimeout(function() {
-                        el.keydown().keyup();
-                    }, 100);
-                })
-                .on('change.mask', function(){
-                    el.data('changed', true);
-                })
-                .on('blur.mask', function(){
-                    if (oldValue !== p.val() && !el.data('changed')) {
-                        el.trigger('change');
-                    }
-                    el.data('changed', false);
-                })
-                // it's very important that this callback remains in this position
-                // otherwhise oldValue it's going to work buggy
-                .on('blur.mask', function() {
-                    oldValue = p.val();
-                })
-                // select all text on focus
-                .on('focus.mask', function (e) {
-                    if (options.selectOnFocus === true) {
-                        $(e.target).select();
-                    }
-                })
-                // clear the value if it not complete the mask
-                .on('focusout.mask', function() {
-                    if (options.clearIfNotMatch && !regexMask.test(p.val())) {
-                       p.val('');
-                   }
-                });
+                    .on('keydown.mask', function(e) {
+                        el.data('mask-keycode', e.keyCode || e.which);
+                        el.data('mask-previus-value', el.val());
+                    })
+                    .on($.jMaskGlobals.useInput ? 'input.mask' : 'keyup.mask', p.behaviour)
+                    .on('paste.mask drop.mask', function() {
+                        setTimeout(function() {
+                            el.keydown().keyup();
+                        }, 100);
+                    })
+                    .on('change.mask', function() {
+                        el.data('changed', true);
+                    })
+                    .on('blur.mask', function() {
+                        if (oldValue !== p.val() && !el.data('changed')) {
+                            el.trigger('change');
+                        }
+                        el.data('changed', false);
+                    })
+                    // it's very important that this callback remains in this position
+                    // otherwhise oldValue it's going to work buggy
+                    .on('blur.mask', function() {
+                        oldValue = p.val();
+                    })
+                    // select all text on focus
+                    .on('focus.mask', function(e) {
+                        if (options.selectOnFocus === true) {
+                            $(e.target).select();
+                        }
+                    })
+                    // clear the value if it not complete the mask
+                    .on('focusout.mask', function() {
+                        if (options.clearIfNotMatch && !regexMask.test(p.val())) {
+                            p.val('');
+                        }
+                    });
             },
             getRegexMask: function() {
-                var maskChunks = [], translation, pattern, optional, recursive, oRecursive, r;
+                var maskChunks = [],
+                    translation, pattern, optional, recursive, oRecursive, r;
 
                 for (var i = 0; i < mask.length; i++) {
                     translation = jMask.translation[mask.charAt(i)];
@@ -382,7 +404,7 @@ function animate(tStamp) {
 
                         if (recursive) {
                             maskChunks.push(mask.charAt(i));
-                            oRecursive = {digit: mask.charAt(i), pattern: pattern};
+                            oRecursive = { digit: mask.charAt(i), pattern: pattern };
                         } else {
                             maskChunks.push(!optional && !recursive ? pattern : (pattern + '?'));
                         }
@@ -396,7 +418,7 @@ function animate(tStamp) {
 
                 if (oRecursive) {
                     r = r.replace(new RegExp('(' + oRecursive.digit + '(.*' + oRecursive.digit + ')?)'), '($1)?')
-                         .replace(new RegExp(oRecursive.digit, 'g'), oRecursive.pattern);
+                        .replace(new RegExp(oRecursive.digit, 'g'), oRecursive.pattern);
                 }
 
                 return new RegExp(r);
@@ -422,14 +444,14 @@ function animate(tStamp) {
             },
             calculateCaretPosition: function(caretPos, newVal) {
                 var newValL = newVal.length,
-                    oValue  = el.data('mask-previus-value') || '',
+                    oValue = el.data('mask-previus-value') || '',
                     oValueL = oValue.length;
 
                 // edge cases when erasing digits
                 if (el.data('mask-keycode') === 8 && oValue !== newVal) {
                     caretPos = caretPos - (newVal.slice(0, caretPos).length - oValue.slice(0, caretPos).length);
 
-                // edge cases when typing new digits
+                    // edge cases when typing new digits
                 } else if (oValue !== newVal) {
                     // if the cursor is at the end keep it there
                     if (caretPos >= oValueL) {
@@ -448,11 +470,11 @@ function animate(tStamp) {
                 var keyCode = el.data('mask-keycode');
 
                 if ($.inArray(keyCode, jMask.byPassKeys) === -1) {
-                    var newVal   = p.getMasked(),
+                    var newVal = p.getMasked(),
                         caretPos = p.getCaret();
 
                     setTimeout(function(caretPos, newVal) {
-                      p.setCaret(p.calculateCaretPosition(caretPos, newVal));
+                        p.setCaret(p.calculateCaretPosition(caretPos, newVal));
                     }, 10, caretPos, newVal);
 
                     p.val(newVal);
@@ -463,9 +485,12 @@ function animate(tStamp) {
             getMasked: function(skipMaskChars, val) {
                 var buf = [],
                     value = val === undefined ? p.val() : val + '',
-                    m = 0, maskLen = mask.length,
-                    v = 0, valLen = value.length,
-                    offset = 1, addMethod = 'push',
+                    m = 0,
+                    maskLen = mask.length,
+                    v = 0,
+                    valLen = value.length,
+                    offset = 1,
+                    addMethod = 'push',
                     resetPos = -1,
                     lastMaskChar,
                     check;
@@ -476,12 +501,12 @@ function animate(tStamp) {
                     lastMaskChar = 0;
                     m = maskLen - 1;
                     v = valLen - 1;
-                    check = function () {
+                    check = function() {
                         return m > -1 && v > -1;
                     };
                 } else {
                     lastMaskChar = maskLen - 1;
-                    check = function () {
+                    check = function() {
                         return m < maskLen && v < valLen;
                     };
                 }
@@ -495,7 +520,7 @@ function animate(tStamp) {
                     if (translation) {
                         if (valDigit.match(translation.pattern)) {
                             buf[addMethod](valDigit);
-                             if (translation.recursive) {
+                            if (translation.recursive) {
                                 if (resetPos === -1) {
                                     resetPos = m;
                                 } else if (m === lastMaskChar) {
@@ -520,7 +545,7 @@ function animate(tStamp) {
                             m += offset;
                             v -= offset;
                         } else {
-                          p.invalid.push({p: v, v: valDigit, e: translation.pattern});
+                            p.invalid.push({ p: v, v: valDigit, e: translation.pattern });
                         }
                         v += offset;
                     } else {
@@ -545,7 +570,7 @@ function animate(tStamp) {
 
                 return buf.join('');
             },
-            callbacks: function (e) {
+            callbacks: function(e) {
                 var val = p.val(),
                     changed = val !== oldValue,
                     defaultArgs = [val, e, el, options],
@@ -563,9 +588,11 @@ function animate(tStamp) {
         };
 
         el = $(el);
-        var jMask = this, oldValue = p.val(), regexMask;
+        var jMask = this,
+            oldValue = p.val(),
+            regexMask;
 
-        mask = typeof mask === 'function' ? mask(p.val(), undefined, el,  options) : mask;
+        mask = typeof mask === 'function' ? mask(p.val(), undefined, el, options) : mask;
 
         // public methods
         jMask.mask = mask;
@@ -580,21 +607,21 @@ function animate(tStamp) {
 
         // get value without mask
         jMask.getCleanVal = function() {
-           return p.getMasked(true);
+            return p.getMasked(true);
         };
 
         // get masked value without the value being in the input or element
         jMask.getMaskedVal = function(val) {
-           return p.getMasked(false, val);
+            return p.getMasked(false, val);
         };
 
-       jMask.init = function(onlyMask) {
+        jMask.init = function(onlyMask) {
             onlyMask = onlyMask || false;
             options = options || {};
 
-            jMask.clearIfNotMatch  = $.jMaskGlobals.clearIfNotMatch;
-            jMask.byPassKeys       = $.jMaskGlobals.byPassKeys;
-            jMask.translation      = $.extend({}, $.jMaskGlobals.translation, options.translation);
+            jMask.clearIfNotMatch = $.jMaskGlobals.clearIfNotMatch;
+            jMask.byPassKeys = $.jMaskGlobals.byPassKeys;
+            jMask.translation = $.extend({}, $.jMaskGlobals.translation, options.translation);
 
             jMask = $.extend(true, {}, jMask, options);
 
@@ -605,14 +632,14 @@ function animate(tStamp) {
                 p.val(p.getMasked());
             } else {
                 if (options.placeholder) {
-                    el.attr('placeholder' , options.placeholder);
+                    el.attr('placeholder', options.placeholder);
                 }
 
                 // this is necessary, otherwise if the user submit the form
                 // and then press the "back" button, the autocomplete will erase
                 // the data. Works fine on IE9+, FF, Opera, Safari.
                 if (el.data('mask')) {
-                  el.attr('autocomplete', 'off');
+                    el.attr('autocomplete', 'off');
                 }
 
                 // detect if is necessary let the user type freely.
@@ -642,54 +669,55 @@ function animate(tStamp) {
     };
 
     $.maskWatchers = {};
-    var HTMLAttributes = function () {
-        var input = $(this),
-            options = {},
-            prefix = 'data-mask-',
-            mask = input.attr('data-mask');
+    var HTMLAttributes = function() {
+            var input = $(this),
+                options = {},
+                prefix = 'data-mask-',
+                mask = input.attr('data-mask');
 
-        if (input.attr(prefix + 'reverse')) {
-            options.reverse = true;
-        }
-
-        if (input.attr(prefix + 'clearifnotmatch')) {
-            options.clearIfNotMatch = true;
-        }
-
-        if (input.attr(prefix + 'selectonfocus') === 'true') {
-           options.selectOnFocus = true;
-        }
-
-        if (notSameMaskObject(input, mask, options)) {
-            return input.data('mask', new Mask(this, mask, options));
-        }
-    },
-    notSameMaskObject = function(field, mask, options) {
-        options = options || {};
-        var maskObject = $(field).data('mask'),
-            stringify = JSON.stringify,
-            value = $(field).val() || $(field).text();
-        try {
-            if (typeof mask === 'function') {
-                mask = mask(value);
+            if (input.attr(prefix + 'reverse')) {
+                options.reverse = true;
             }
-            return typeof maskObject !== 'object' || stringify(maskObject.options) !== stringify(options) || maskObject.mask !== mask;
-        } catch (e) {}
-    },
-    eventSupported = function(eventName) {
-        var el = document.createElement('div'), isSupported;
 
-        eventName = 'on' + eventName;
-        isSupported = (eventName in el);
+            if (input.attr(prefix + 'clearifnotmatch')) {
+                options.clearIfNotMatch = true;
+            }
 
-        if ( !isSupported ) {
-            el.setAttribute(eventName, 'return;');
-            isSupported = typeof el[eventName] === 'function';
-        }
-        el = null;
+            if (input.attr(prefix + 'selectonfocus') === 'true') {
+                options.selectOnFocus = true;
+            }
 
-        return isSupported;
-    };
+            if (notSameMaskObject(input, mask, options)) {
+                return input.data('mask', new Mask(this, mask, options));
+            }
+        },
+        notSameMaskObject = function(field, mask, options) {
+            options = options || {};
+            var maskObject = $(field).data('mask'),
+                stringify = JSON.stringify,
+                value = $(field).val() || $(field).text();
+            try {
+                if (typeof mask === 'function') {
+                    mask = mask(value);
+                }
+                return typeof maskObject !== 'object' || stringify(maskObject.options) !== stringify(options) || maskObject.mask !== mask;
+            } catch (e) {}
+        },
+        eventSupported = function(eventName) {
+            var el = document.createElement('div'),
+                isSupported;
+
+            eventName = 'on' + eventName;
+            isSupported = (eventName in el);
+
+            if (!isSupported) {
+                el.setAttribute(eventName, 'return;');
+                isSupported = typeof el[eventName] === 'function';
+            }
+            el = null;
+
+            return isSupported;
+        };
 
     $.fn.mask = function(mask, options) {
         options = options || {};
@@ -707,7 +735,7 @@ function animate(tStamp) {
 
         if (selector && selector !== '' && watchInputs) {
             clearInterval($.maskWatchers[selector]);
-            $.maskWatchers[selector] = setInterval(function(){
+            $.maskWatchers[selector] = setInterval(function() {
                 $(document).find(selector).each(maskFunction);
             }, interval);
         }
@@ -750,11 +778,11 @@ function animate(tStamp) {
         watchDataMask: false,
         byPassKeys: [9, 16, 17, 18, 36, 37, 38, 39, 40, 91],
         translation: {
-            '0': {pattern: /\d/},
-            '9': {pattern: /\d/, optional: true},
-            '#': {pattern: /\d/, recursive: true},
-            'A': {pattern: /[a-zA-Z0-9]/},
-            'S': {pattern: /[a-zA-Z]/}
+            '0': { pattern: /\d/ },
+            '9': { pattern: /\d/, optional: true },
+            '#': { pattern: /\d/, recursive: true },
+            'A': { pattern: /[a-zA-Z0-9]/ },
+            'S': { pattern: /[a-zA-Z]/ }
         }
     };
 
@@ -775,20 +803,20 @@ function animate(tStamp) {
 
 /************************MY______Code********************/
 $('.phone').focus(function(event) {
-	$('.phone').mask("+7(99)999-99-99")
+    $('.phone').mask("+7(99)999-99-99")
 });
 
-$(document).on('click', 'a[href^="#form"]', function (event) {
+$(document).on('click', 'a[href^="#form"]', function(event) {
     event.preventDefault();
     $('html, body').animate({
-	    scrollTop: $($.attr(this, 'href')).offset().top
-	}, 2000);
+        scrollTop: $($.attr(this, 'href')).offset().top
+    }, 2000);
 
 });
-$(document).on('click', 'a[href^="#tabs"]', function (event) {
+$(document).on('click', 'a[href^="#tabs"]', function(event) {
     event.preventDefault();
     $('html, body').animate({
-      scrollTop: $($.attr(this, 'href')).offset().top
-  }, 2000);
+        scrollTop: $($.attr(this, 'href')).offset().top
+    }, 2000);
 
 });
