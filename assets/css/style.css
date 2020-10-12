@@ -15,9 +15,15 @@ header {
     display: flex;
 }
 
-.wrapper_logo {
+.wrapper__logo {
     position: relative;
     max-width: 1200px;
+}
+
+.wrapper__logo a {
+    text-decoration: none !important;
+    text-transform: uppercase;
+    letter-spacing: 2px;
 }
 
 a img.logo {
@@ -298,11 +304,9 @@ canvas {
 
 .arrow {
     position: absolute;
-    bottom: 0px;
-    right: 0px;
     transform: translateX(10px);
-    left: auto;
-    bottom: auto;
+    right: 0;
+    bottom: 0;
     display: block;
     height: 32px;
     width: 32px;
@@ -311,6 +315,7 @@ canvas {
 
 .arrow img {
     transform: rotateZ(45deg);
+    width: 30px;
 }
 
 .cards:hover .second__icon {
@@ -735,6 +740,28 @@ canvas {
     .highlight__pos4 {
         margin-top: 1.5rem;
     }
+    .fac__name {
+        font-size: 20px;
+        line-height: 25px
+    }
+    .cards {
+        height: 220px;
+    }
+    .fac__flag .first__icon {
+        width: 50px;
+        height: 60px;
+    }
+    .fac__flag .second__icon {
+        width: 50px;
+        height: 60px;
+    }
+    .fac__flag .fac__icon {
+        width: 20px;
+        height: 20px;
+    }
+    .div__sale {
+        padding: 8px 12px;
+    }
 }
 
 @media screen and (max-width: 768px) {
@@ -824,6 +851,10 @@ canvas {
         display: inline-block;
         width: 45%;
     }
+    .fac__name {
+        font-size: 20px;
+        line-height: 20px
+    }
 }
 
 @media screen and (max-width: 577px) {
@@ -875,6 +906,7 @@ canvas {
         line-height: 20px;
         padding-top: 16px;
         padding-bottom: 16px;
+        margin-right: 5px;
     }
     .product__category {
         padding-left: 20px;
