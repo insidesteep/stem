@@ -556,6 +556,7 @@
     }
     
     .canvBox {
+        position: relative;
         height: 420px;
         max-width: 1285px !important;
         margin-left: auto;
