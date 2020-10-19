@@ -75,6 +75,10 @@
         font-weight: 700;
     }
     
+    .hero_2 span {
+        font-size: 25px
+    }
+    
     canvas {
         border-radius: 12px;
     }
@@ -91,6 +95,10 @@
         font-size: 50px;
         line-height: 64px;
         font-weight: 700;
+    }
+    
+    .hero_1 span {
+        font-size: 43px;
     }
     
     .button {
@@ -153,7 +161,7 @@
         border-radius: 12px;
         display: flex;
         min-height: 200px;
-        height: 100%;
+        height: 90%;
         background-image: linear-gradient(90deg, rgb(138 255 228 / 30%), rgb(153 255 56 / 30%));
         /* background-image: linear-gradient(90deg, rgba(138, 213, 255, 0.3), rgba(56, 88, 255, 0.3)); */
     }
@@ -327,7 +335,8 @@
         opacity: 0;
     }
     
-    .cards:hover .arrow {
+    .cards:hover .arrow,
+    .fac__cards__second:hover .arrow {
         transform: translate3d(0, 0px, 0px) scale3d(1, 1, 1) rotateX(0deg) rotateY(0deg) rotateZ(0deg) skew(0deg, 0deg);
         transform-style: preserve-3d;
         z-index: 1;
@@ -428,6 +437,7 @@
     }
     
     .fac__cards__second {
+        opacity: 1;
         height: 90%;
         position: relative;
         padding: 32px;
@@ -437,6 +447,11 @@
         display: flex;
         box-shadow: 6px 6px 40px 0 rgba(55, 84, 170, 0.12);
         border-radius: 12px;
+        -webkit-transition: opacity 0.5s ease;
+        -moz-transition: opacity 0.5s ease;
+        -ms-transition: opacity 0.5s ease;
+        -o-transition: opacity 0.5s ease;
+        transition: opacity 0.5s ease;
     }
     
     .image__27 {
@@ -468,6 +483,7 @@
     }
     
     .fac__cards__second:hover {
+        opacity: 0.9;
         background-image: linear-gradient(135deg, #7f4e8b, #f6a0db);
     }
     
@@ -747,7 +763,8 @@
         }
         .fac__name {
             font-size: 20px;
-            line-height: 25px
+            line-height: 25px;
+            width: 220px;
         }
         .cards {
             height: 220px;
@@ -872,14 +889,11 @@
             font-size: 20px;
             line-height: 20px
         }
-        .wrapper__main {
-            padding: 15px;
-        }
         .canvBox {
             height: 320px;
         }
         .wrapper__main {
-            padding: 20px;
+            padding: 20px 52px;
         }
         .hero_1 {
             font-size: 35px;
